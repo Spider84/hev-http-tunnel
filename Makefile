@@ -60,7 +60,7 @@ endif
 all : $(TARGET)
 
 tp-build : $(THIRDPARTS)
-	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir);)
+	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) ENABLE_PTHREAD=0;)
 
 tp-clean : $(THIRDPARTS)
 	@$(foreach dir,$^,$(MAKE) --no-print-directory -C $(dir) clean;)
