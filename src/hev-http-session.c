@@ -413,6 +413,81 @@ http_switch_connect (HevHttpSession *self, HevHttpBuffer *buffer)
 }
 
 static int
+http_forward_request_header (HevHttpSession *self, HevHttpParser *parser,
+                             HevHttpBuffer *buffer)
+{
+    struct iovec iov[7];
+    struct msghdr mh = { .msg_iov = iov };
+    unsigned int host_len = self->host_len;
+    const char *host = self->host;
+    ssize_t res;
+    int i;
+
+    for (i = 0; i < parser->header_used; i++) {
+        HevHttpHeader *h = &parser->headers[i];
+
+        /* connect for upgrade */
+        if (strcmp (h->lowcase_name, "upgrade") == 0)
+            return http_switch_connect (self, buffer);
+
+        if (strcmp (h->lowcase_name, "host") == 0) {
+            host = h->value;
+            host_len = h->value_len;
+        }
+    }
+
+    iov[0].iov_base = (void *)parser->method;
+    iov[0].iov_len = parser->method_len;
+    iov[1].iov_base = " http://";
+    iov[1].iov_len = strlen (iov[1].iov_base);
+    iov[2].iov_base = (void *)host;
+    iov[2].iov_len = host_len;
+    iov[3].iov_base = (void *)parser->uri;
+    iov[3].iov_len = parser->uri_len;
+    iov[4].iov_base = " HTTP/1.1\r\nHost: ";
+    iov[4].iov_len = strlen (iov[4].iov_base);
+    iov[5].iov_base = (void *)host;
+    iov[5].iov_len = host_len;
+    iov[6].iov_base = "\r\n";
+    iov[6].iov_len = strlen (iov[6].iov_base);
+    mh.msg_iovlen = 7;
+
+    res = hev_task_io_socket_sendmsg (self->remote_fd, &mh, MSG_WAITALL,
+                                      task_io_yielder, self);
+    if (res < 0)
+        return STEP_CLOSE_SESSION;
+
+    for (i = 0; i < parser->header_used; i++) {
+        HevHttpHeader *h = &parser->headers[i];
+
+        if (strcmp (h->lowcase_name, "host") == 0)
+            continue;
+
+        iov[0].iov_base = (void *)h->name;
+        iov[0].iov_len = h->name_len;
+        iov[1].iov_base = ": ";
+        iov[1].iov_len = strlen (iov[1].iov_base);
+        iov[2].iov_base = (void *)h->value;
+        iov[2].iov_len = h->value_len;
+        iov[3].iov_base = "\r\n";
+        iov[3].iov_len = strlen (iov[3].iov_base);
+        mh.msg_iovlen = 4;
+
+        res = hev_task_io_socket_sendmsg (self->remote_fd, &mh, MSG_WAITALL,
+                                          task_io_yielder, self);
+        if (res < 0)
+            return STEP_CLOSE_SESSION;
+    }
+
+    res = hev_task_io_socket_send (self->remote_fd, "\r\n", strlen ("\r\n"),
+                                   MSG_WAITALL, task_io_yielder, self);
+    if (res < 0)
+        return STEP_CLOSE_SESSION;
+
+    return 0;
+}
+
+static int
 http_process_request_header (HevHttpSession *self, HevHttpParser *parser,
                              HevHttpBuffer *buffer)
 {
@@ -449,87 +524,7 @@ http_process_request_header (HevHttpSession *self, HevHttpParser *parser,
             return STEP_CLOSE_SESSION;
     }
 
-    /* connect for upgrade */
-    {
-        int i;
-
-        for (i = 0; i < parser->header_used; i++) {
-            HevHttpHeader *h = &parser->headers[i];
-
-            if (strcmp (h->lowcase_name, "upgrade") == 0)
-                return http_switch_connect (self, buffer);
-        }
-    }
-
-    /* convert and forward */
-    {
-        struct iovec iov[7];
-        struct msghdr mh = { .msg_iov = iov };
-        unsigned int host_len = self->host_len;
-        const char *host = self->host;
-        ssize_t res;
-        int i;
-
-        for (i = 0; i < parser->header_used; i++) {
-            HevHttpHeader *h = &parser->headers[i];
-
-            if (strcmp (h->lowcase_name, "host") == 0) {
-                host = h->value;
-                host_len = h->value_len;
-                break;
-            }
-        }
-
-        iov[0].iov_base = (void *)parser->method;
-        iov[0].iov_len = parser->method_len;
-        iov[1].iov_base = " http://";
-        iov[1].iov_len = strlen (iov[1].iov_base);
-        iov[2].iov_base = (void *)host;
-        iov[2].iov_len = host_len;
-        iov[3].iov_base = (void *)parser->uri;
-        iov[3].iov_len = parser->uri_len;
-        iov[4].iov_base = " HTTP/1.1\r\nHost: ";
-        iov[4].iov_len = strlen (iov[4].iov_base);
-        iov[5].iov_base = (void *)host;
-        iov[5].iov_len = host_len;
-        iov[6].iov_base = "\r\n";
-        iov[6].iov_len = strlen (iov[6].iov_base);
-        mh.msg_iovlen = 7;
-
-        res = hev_task_io_socket_sendmsg (self->remote_fd, &mh, MSG_WAITALL,
-                                          task_io_yielder, self);
-        if (res < 0)
-            return STEP_CLOSE_SESSION;
-
-        for (i = 0; i < parser->header_used; i++) {
-            HevHttpHeader *h = &parser->headers[i];
-
-            if (strcmp (h->lowcase_name, "host") == 0)
-                continue;
-
-            iov[0].iov_base = (void *)h->name;
-            iov[0].iov_len = h->name_len;
-            iov[1].iov_base = ": ";
-            iov[1].iov_len = strlen (iov[1].iov_base);
-            iov[2].iov_base = (void *)h->value;
-            iov[2].iov_len = h->value_len;
-            iov[3].iov_base = "\r\n";
-            iov[3].iov_len = strlen (iov[3].iov_base);
-            mh.msg_iovlen = 4;
-
-            res = hev_task_io_socket_sendmsg (self->remote_fd, &mh, MSG_WAITALL,
-                                              task_io_yielder, self);
-            if (res < 0)
-                return STEP_CLOSE_SESSION;
-        }
-
-        res = hev_task_io_socket_send (self->remote_fd, "\r\n", strlen ("\r\n"),
-                                       MSG_WAITALL, task_io_yielder, self);
-        if (res < 0)
-            return STEP_CLOSE_SESSION;
-    }
-
-    return 0;
+    return http_forward_request_header (self, parser, buffer);
 }
 
 static int
