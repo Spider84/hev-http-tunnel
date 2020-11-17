@@ -10,6 +10,8 @@
 #ifndef __HEV_HTTP_PARSER_H__
 #define __HEV_HTTP_PARSER_H__
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,11 +30,11 @@ typedef struct _HevHttpParser HevHttpParser;
 struct _HevHttpBuffer
 {
     /* public */
-    unsigned char *pos;
-    unsigned char *last;
+    uint8_t *pos;
+    uint8_t *last;
 
-    unsigned int size;
-    unsigned char data[0];
+    size_t size;
+    uint8_t data[0];
 };
 
 struct _HevHttpHeader
@@ -41,28 +43,28 @@ struct _HevHttpHeader
     char lowcase_name[HEV_HTTP_LC_HEADER_LEN];
     const char *name;
     const char *value;
-    unsigned int name_len;
-    unsigned int value_len;
+    uint32_t name_len;
+    uint32_t value_len;
 };
 
 struct _HevHttpParser
 {
     /* private */
     int state;
-    int max_headers;
-    unsigned int lowcase_idx;
+    uint32_t max_headers;
+    uint32_t lowcase_idx;
 
     /* public */
-    int header_used;
-    unsigned int chunk_size;
+    uint32_t header_used;
+    uint64_t chunk_size;
 
-    unsigned int method_len;
-    unsigned int schema_len;
-    unsigned int host_len;
-    unsigned int uri_len;
-    unsigned int version_len;
-    unsigned int status_len;
-    unsigned int code;
+    uint32_t method_len;
+    uint32_t schema_len;
+    uint32_t host_len;
+    uint32_t uri_len;
+    uint32_t version_len;
+    uint32_t status_len;
+    uint32_t code;
 
     const char *method;
     const char *schema;
@@ -74,14 +76,13 @@ struct _HevHttpParser
     HevHttpHeader headers[0];
 };
 
-HevHttpBuffer *hev_http_buffer_new (unsigned int size);
+HevHttpBuffer *hev_http_buffer_new (size_t size);
 void hev_http_buffer_destroy (HevHttpBuffer *buffer);
 
 void hev_http_buffer_reset (HevHttpBuffer *buffer);
-int hev_http_buffer_write (HevHttpBuffer *buffer, const void *data,
-                           unsigned int len);
+int hev_http_buffer_write (HevHttpBuffer *buffer, const void *data, size_t len);
 
-HevHttpParser *hev_http_parser_new (int max_headers);
+HevHttpParser *hev_http_parser_new (uint32_t max_headers);
 void hev_http_parser_destroy (HevHttpParser *parser);
 
 int hev_http_parser_parse_request_line (HevHttpParser *parser,

@@ -20,7 +20,7 @@
 
 #define HEV_MAX_OFF_T_VALUE 9223372036854775807
 
-static unsigned int usual[] = {
+static uint32_t usual[] = {
     0xffffdbfe, /* 1111 1111 1111 1111  1101 1011 1111 1110 */
 
     /* ?>=< ;:98 7654 3210  /.-, +*)( '&%$ #"!  */
@@ -64,7 +64,7 @@ static unsigned int usual[] = {
         c5 &&m[6] == c6 &&m[7] == c7 &&m[8] == c8
 
 HevHttpBuffer *
-hev_http_buffer_new (unsigned int size)
+hev_http_buffer_new (size_t size)
 {
     HevHttpBuffer *buffer;
 
@@ -95,10 +95,9 @@ hev_http_buffer_reset (HevHttpBuffer *buffer)
 }
 
 int
-hev_http_buffer_write (HevHttpBuffer *buffer, const void *data,
-                       unsigned int len)
+hev_http_buffer_write (HevHttpBuffer *buffer, const void *data, size_t len)
 {
-    unsigned int size;
+    size_t size;
 
     size = buffer->data + buffer->size - buffer->last;
     if (len > size)
@@ -111,7 +110,7 @@ hev_http_buffer_write (HevHttpBuffer *buffer, const void *data,
 }
 
 HevHttpParser *
-hev_http_parser_new (int max_headers)
+hev_http_parser_new (uint32_t max_headers)
 {
     HevHttpParser *parser;
 
@@ -167,8 +166,8 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
         sw_spaces_after_digit,
         sw_almost_done
     } state;
-    unsigned char c, ch;
-    const unsigned char *p, *m;
+    uint8_t c, ch;
+    const uint8_t *p, *m;
 
     state = parser->state;
 
@@ -191,7 +190,7 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
             break;
         case sw_method:
             if (ch == ' ') {
-                m = (const unsigned char *)parser->method;
+                m = (const uint8_t *)parser->method;
                 parser->method_len = p - m;
 
                 switch (parser->method_len) {
@@ -261,7 +260,7 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
                 break;
             }
 
-            c = (unsigned char)(ch | 0x20);
+            c = (uint8_t) (ch | 0x20);
             if (c >= 'a' && c <= 'z') {
                 parser->schema = (const char *)p;
                 state = sw_schema;
@@ -276,7 +275,7 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
             }
             break;
         case sw_schema:
-            c = (unsigned char)(ch | 0x20);
+            c = (uint8_t) (ch | 0x20);
             if (c >= 'a' && c <= 'z')
                 break;
 
@@ -322,7 +321,7 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
             state = sw_host;
             /* fall through */
         case sw_host:
-            c = (unsigned char)(ch | 0x20);
+            c = (uint8_t) (ch | 0x20);
             if (c >= 'a' && c <= 'z')
                 break;
 
@@ -357,7 +356,7 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
             if (ch >= '0' && ch <= '9')
                 break;
 
-            c = (unsigned char)(ch | 0x20);
+            c = (uint8_t) (ch | 0x20);
             if (c >= 'a' && c <= 'z')
                 break;
 
@@ -670,12 +669,12 @@ hev_http_parser_parse_request_line (HevHttpParser *parser,
         }
     }
 
-    buffer->pos = (unsigned char *)p;
+    buffer->pos = (uint8_t *)p;
     parser->state = state;
     return HEV_HTTP_PARSER_AGAIN;
 
 done:
-    buffer->pos = (unsigned char *)(p + 1);
+    buffer->pos = (uint8_t *)(p + 1);
     parser->state = sw_start;
     return HEV_HTTP_PARSER_OK;
 }
@@ -699,8 +698,8 @@ hev_http_parser_parse_status_line (HevHttpParser *parser, HevHttpBuffer *buffer)
         sw_status_text,
         sw_almost_done
     } state;
-    unsigned char ch;
-    const unsigned char *p;
+    uint8_t ch;
+    const uint8_t *p;
 
     state = parser->state;
 
@@ -851,12 +850,12 @@ hev_http_parser_parse_status_line (HevHttpParser *parser, HevHttpBuffer *buffer)
         }
     }
 
-    buffer->pos = (unsigned char *)p;
+    buffer->pos = (uint8_t *)p;
     parser->state = state;
     return HEV_HTTP_PARSER_AGAIN;
 
 done:
-    buffer->pos = (unsigned char *)(p + 1);
+    buffer->pos = (uint8_t *)(p + 1);
     parser->state = sw_start;
     return HEV_HTTP_PARSER_OK;
 }
@@ -874,13 +873,13 @@ hev_http_parser_parse_header_line (HevHttpParser *parser, HevHttpBuffer *buffer)
         sw_almost_done,
         sw_header_almost_done
     } state;
-    unsigned int i;
-    unsigned char c, ch;
-    const unsigned char *p;
+    uint32_t i;
+    uint8_t c, ch;
+    const uint8_t *p;
     HevHttpHeader *header;
 
     /* the last '\0' is not needed because string is zero terminated */
-    static unsigned char lowcase[] =
+    static uint8_t lowcase[] =
         "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
         "\0\0\0\0\0\0\0\0\0\0\0\0\0-\0\0"
         "0123456789\0\0\0\0\0\0"
@@ -1050,13 +1049,13 @@ hev_http_parser_parse_header_line (HevHttpParser *parser, HevHttpBuffer *buffer)
         }
     }
 
-    buffer->pos = (unsigned char *)p;
+    buffer->pos = (uint8_t *)p;
     parser->state = state;
     parser->lowcase_idx = i;
     return HEV_HTTP_PARSER_AGAIN;
 
 done:
-    buffer->pos = (unsigned char *)(p + 1);
+    buffer->pos = (uint8_t *)(p + 1);
     parser->state = sw_start;
     parser->lowcase_idx = i;
     if (header->name_len)
@@ -1064,7 +1063,7 @@ done:
     return HEV_HTTP_PARSER_OK;
 
 header_done:
-    buffer->pos = (unsigned char *)(p + 1);
+    buffer->pos = (uint8_t *)(p + 1);
     parser->state = sw_start;
     return HEV_HTTP_PARSER_DONE;
 }
@@ -1089,8 +1088,8 @@ hev_http_parser_parse_chunked (HevHttpParser *parser, HevHttpBuffer *buffer)
         sw_trailer_header_almost_done
     } state;
     int res;
-    unsigned char c, ch;
-    const unsigned char *pos;
+    uint8_t c, ch;
+    const uint8_t *pos;
 
     res = HEV_HTTP_PARSER_AGAIN;
     state = parser->state;
@@ -1109,7 +1108,7 @@ hev_http_parser_parse_chunked (HevHttpParser *parser, HevHttpBuffer *buffer)
                 break;
             }
 
-            c = (unsigned char)(ch | 0x20);
+            c = (uint8_t) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
                 state = sw_chunk_size;
                 parser->chunk_size = c - 'a' + 10;
@@ -1125,7 +1124,7 @@ hev_http_parser_parse_chunked (HevHttpParser *parser, HevHttpBuffer *buffer)
                 break;
             }
 
-            c = (unsigned char)(ch | 0x20);
+            c = (uint8_t) (ch | 0x20);
             if (c >= 'a' && c <= 'f') {
                 parser->chunk_size = parser->chunk_size * 16 + (c - 'a' + 10);
                 break;
@@ -1252,7 +1251,7 @@ hev_http_parser_parse_chunked (HevHttpParser *parser, HevHttpBuffer *buffer)
 
 data:
     parser->state = state;
-    buffer->pos = (unsigned char *)pos;
+    buffer->pos = (uint8_t *)pos;
 
     if (parser->chunk_size > HEV_MAX_OFF_T_VALUE - 5)
         goto invalid;
@@ -1261,7 +1260,7 @@ data:
 
 done:
     parser->state = 0;
-    buffer->pos = (unsigned char *)(pos + 1);
+    buffer->pos = (uint8_t *)(pos + 1);
     return HEV_HTTP_PARSER_DONE;
 
 invalid:
