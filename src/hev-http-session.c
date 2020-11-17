@@ -368,7 +368,7 @@ static int
 http_switch_splice (HevHttpSession *self, HevHttpBuffer *buffer, int upstream)
 {
     size_t len;
-    int res;
+    ssize_t res;
 
     LOG_D ("Session %s: switch splice", self->saddr);
 
@@ -576,7 +576,7 @@ http_process_response_header (HevHttpSession *self, HevHttpParser *parser,
 
 static int
 http_process_body_content_up (HevHttpSession *self, HevHttpBuffer *buffer,
-                              unsigned int length)
+                              uint64_t length)
 {
     size_t len = buffer->last - buffer->pos;
     if (len) {
@@ -622,7 +622,7 @@ http_process_body_content_up (HevHttpSession *self, HevHttpBuffer *buffer,
 
 static int
 http_process_body_content_down (HevHttpSession *self, HevHttpBuffer *buffer,
-                                unsigned int length)
+                                uint64_t length)
 {
     size_t len = buffer->last - buffer->pos;
     if (len) {
@@ -672,7 +672,7 @@ http_process_body_chunked_up (HevHttpSession *self, HevHttpParser *parser,
         if (res == HEV_HTTP_PARSER_ERROR) {
             return STEP_CLOSE_SESSION;
         } else if (res == HEV_HTTP_PARSER_OK) {
-            unsigned int len = parser->chunk_size;
+            uint64_t len = parser->chunk_size;
             len += buffer->pos - buffer->data;
             buffer->pos = buffer->data;
             if (http_process_body_content_up (self, buffer, len))
@@ -681,7 +681,7 @@ http_process_body_chunked_up (HevHttpSession *self, HevHttpParser *parser,
             hev_http_buffer_reset (buffer);
             continue;
         } else if (res == HEV_HTTP_PARSER_DONE) {
-            unsigned int len = buffer->pos - buffer->data;
+            uint64_t len = buffer->pos - buffer->data;
             buffer->pos = buffer->data;
             if (http_process_body_content_up (self, buffer, len))
                 return STEP_CLOSE_SESSION;
@@ -708,7 +708,7 @@ http_process_body_chunked_down (HevHttpSession *self, HevHttpParser *parser,
         if (res == HEV_HTTP_PARSER_ERROR) {
             return STEP_CLOSE_SESSION;
         } else if (res == HEV_HTTP_PARSER_OK) {
-            unsigned int len = parser->chunk_size;
+            uint64_t len = parser->chunk_size;
             len += buffer->pos - buffer->data;
             buffer->pos = buffer->data;
             if (http_process_body_content_down (self, buffer, len))
@@ -717,7 +717,7 @@ http_process_body_chunked_down (HevHttpSession *self, HevHttpParser *parser,
             hev_http_buffer_reset (buffer);
             continue;
         } else if (res == HEV_HTTP_PARSER_DONE) {
-            unsigned int len = buffer->pos - buffer->data;
+            uint64_t len = buffer->pos - buffer->data;
             buffer->pos = buffer->data;
             if (http_process_body_content_down (self, buffer, len))
                 return STEP_CLOSE_SESSION;
@@ -735,7 +735,7 @@ static int
 http_process_body (HevHttpSession *self, HevHttpParser *parser,
                    HevHttpBuffer *buffer, int upstream)
 {
-    unsigned int content_length = 0;
+    uint64_t content_length = 0;
     int i, chunked = 0;
 
     for (i = 0; i < parser->header_used; i++) {
