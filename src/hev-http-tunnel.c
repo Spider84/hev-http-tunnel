@@ -288,10 +288,10 @@ netif_output_handler (struct netif *netif, struct pbuf *p)
     ssize_t s;
 
     if (p->next) {
-        struct iovec iov[64];
+        struct iovec iov[256];
         int i;
 
-        for (i = 0; (i < 64) && p; p = p->next) {
+        for (i = 0; (i < 256) && p; p = p->next) {
             iov[i].iov_base = p->payload;
             iov[i].iov_len = p->len;
             i++;
@@ -470,11 +470,11 @@ lwip_io_task_entry (void *data)
         }
 
         if (buf->next) {
-            struct iovec iov[64];
+            struct iovec iov[256];
             struct pbuf *p;
             int i;
 
-            for (i = 0, p = buf; (i < 64) && p; p = p->next) {
+            for (i = 0, p = buf; (i < 256) && p; p = p->next) {
                 iov[i].iov_base = p->payload;
                 iov[i].iov_len = p->len;
                 i++;
