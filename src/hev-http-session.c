@@ -213,15 +213,18 @@ tcp_recv_handler (void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
     HevHttpSession *self = arg;
 
-    if ((err != ERR_OK) || !p) {
+    if (!p) {
         self->base.hp = 0;
         goto exit;
     }
 
-    if (!self->queue)
+    if (!self->queue) {
         self->queue = p;
-    else
+    } else {
+        if ((UINT16_MAX - self->queue->tot_len) < p->tot_len)
+            return ERR_WOULDBLOCK;
         pbuf_cat (self->queue, p);
+    }
 
     tcp_recved (pcb, p->tot_len);
 
@@ -1005,8 +1008,7 @@ tcp_splice_f (HevHttpSession *self)
     if (0 >= s) {
         if ((0 > s) && (EAGAIN == errno))
             return 0;
-        else
-            return -1;
+        return -1;
     } else {
         hev_task_mutex_lock (self->mutex);
         self->queue = pbuf_free_header (self->queue, s);
