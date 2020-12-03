@@ -221,12 +221,10 @@ tcp_recv_handler (void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
     if (!self->queue) {
         self->queue = p;
     } else {
-        if ((UINT16_MAX - self->queue->tot_len) < p->tot_len)
+        if (self->queue->tot_len > TCP_WND)
             return ERR_WOULDBLOCK;
         pbuf_cat (self->queue, p);
     }
-
-    tcp_recved (pcb, p->tot_len);
 
 exit:
     hev_task_wakeup (self->base.task);
@@ -306,6 +304,7 @@ http_recv_pb (HevHttpSession *self, HevHttpBuffer *buffer)
     hev_task_mutex_lock (self->mutex);
     len = pbuf_copy_partial (self->queue, buffer->last, len, 0);
     self->queue = pbuf_free_header (self->queue, len);
+    tcp_recved (self->tcp, len);
     hev_task_mutex_unlock (self->mutex);
 
     buffer->last += len;
@@ -613,6 +612,7 @@ http_process_body_content_up (HevHttpSession *self, HevHttpBuffer *buffer,
         hev_task_mutex_lock (self->mutex);
         len = pbuf_copy_partial (self->queue, buffer->data, len, 0);
         self->queue = pbuf_free_header (self->queue, len);
+        tcp_recved (self->tcp, len);
         hev_task_mutex_unlock (self->mutex);
         length -= len;
 
@@ -1012,6 +1012,7 @@ tcp_splice_f (HevHttpSession *self)
     } else {
         hev_task_mutex_lock (self->mutex);
         self->queue = pbuf_free_header (self->queue, s);
+        tcp_recved (self->tcp, s);
         hev_task_mutex_unlock (self->mutex);
     }
 
